@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getDriveFiles, deleteDriveFile, createDriveFolder, searchDriveFiles } from './api';
+import { getDriveFiles, deleteDriveFile, createDriveFolder, searchDriveFiles, syncSubmissionsWithBackend } from './api'; 
 import { supabase } from './supabaseClient';
 
 // --- SVG Icons ---
@@ -17,26 +17,27 @@ const FileIcon = () => (
 );
 
 const TeacherDashboard = ({ user }) => {
-    // Navigation and Data State
-    const [navStack, setNavStack] = useState([{ id: 'root', name: 'Home' }]);
+    const ROOT_ID = '1coTNznsUzG_n7Oztc8EZJ4wpxlssbQ-z';
+    const [navStack, setNavStack] = useState([{ id: ROOT_ID, name: 'IEEE Root' }]);
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false); // New state for backend process
     const [error, setError] = useState('');
-
-    // Search and Sorting State
     const [searchTerm, setSearchTerm] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
     const currentFolder = navStack[navStack.length - 1];
 
-    // Refresh files when folder changes (if not in search mode)
-    useEffect(() => {
-        if (!isSearching) {
-            loadFiles(currentFolder.id);
-        }
-    }, [currentFolder, isSearching]);
+    const getDisplayType = (mimeType) => {
+        if (!mimeType) return 'File';
+        if (mimeType === 'application/vnd.google-apps.folder') return 'Folder';
+        if (mimeType === 'application/pdf') return 'PDF';
+        if (mimeType.includes('wordprocessingml') || mimeType.includes('officedocument')) return 'DOCX';
+        return 'File';
+    };
 
+    // --- Core Data Loader: Just pulls the current file list ---
     const loadFiles = async (folderId) => {
         try {
             setLoading(true);
@@ -44,41 +45,40 @@ const TeacherDashboard = ({ user }) => {
             const data = await getDriveFiles(folderId);
             setFiles(data);
         } catch (err) {
-            setError(err.message);
+            setError("Failed to load: " + err.message);
         } finally {
             setLoading(false);
         }
     };
 
-    // Background Sync Engine
     useEffect(() => {
-        // Initial load
-        if (!isSearching) loadFiles(currentFolder.id);
+        if (!isSearching) {
+            loadFiles(currentFolder.id);
+        }
+    }, [currentFolder.id, isSearching]); 
 
-        // BACKGROUND SYNC ENGINE
-        const syncInterval = setInterval(async () => {
-            // Only sync if we are in the 'Home' folder and NOT currently searching
-            if (currentFolder.id === 'root' && !isSearching && !loading) {
-                try {
-                    const latest = await syncSubmissionsWithBackend();
-                    
-                    setFiles(prevFiles => {
-                        const existingIds = new Set(prevFiles.map(f => f.id));
-                        const trulyNew = latest.filter(f => !existingIds.has(f.id));
-                        
-                        // Spread new files at the top of the list
-                        return trulyNew.length > 0 ? [...trulyNew, ...prevFiles] : prevFiles;
-                    });
-                } catch (err) {
-                    console.warn("Silent sync failed, retrying in 30s...");
-                }
-            }
-        }, 30000); // 30 seconds
+    // --- Manual Sync: Triggers Spreadsheet Reading & Routing ---
+    const handleManualSync = async () => {
+        try {
+            setIsSyncing(true);
+            setError('');
+            // Triggers the Java logic to read Sheet and replicate files
+            await syncSubmissionsWithBackend(); 
+            // Refresh current view to show newly organized folders/files
+            await loadFiles(currentFolder.id); 
+            alert("Sync and organization complete!");
+        } catch (err) {
+            setError("Sync failed: " + err.message);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
-        return () => clearInterval(syncInterval);
-    }, [currentFolder, isSearching]);
+    // --- Manual Refresh: Just re-lists files without running the Sync logic ---
+    const handleManualRefresh = () => {
+        loadFiles(currentFolder.id);
+    };
 
-    // --- Search Logic ---
     const handleSearch = async (e) => {
         const value = e.target.value;
         setSearchTerm(value);
@@ -100,9 +100,8 @@ const TeacherDashboard = ({ user }) => {
         }
     };
 
-    // --- Navigation Logic ---
     const handleFolderClick = (folderId, folderName) => {
-        setSearchTerm(''); // Clear search when navigating
+        setSearchTerm('');
         setIsSearching(false);
         setNavStack([...navStack, { id: folderId, name: folderName }]);
     };
@@ -113,10 +112,9 @@ const TeacherDashboard = ({ user }) => {
         setNavStack(navStack.slice(0, index + 1));
     };
 
-    // --- CRUD Logic ---
     const handleCreateFolder = async () => {
         if (isSearching) {
-            alert("Please exit search mode to create folders in a specific location.");
+            alert("Please exit search mode to create folders.");
             return;
         }
         const folderName = prompt("Enter new folder name:");
@@ -136,11 +134,10 @@ const TeacherDashboard = ({ user }) => {
             await deleteDriveFile(fileId);
         } catch (err) {
             alert("Delete failed: " + err.message);
-            isSearching ? handleSearch({ target: { value: searchTerm } }) : loadFiles(currentFolder.id);
+            loadFiles(currentFolder.id);
         }
     };
 
-    // --- Sorting Logic ---
     const requestSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -150,11 +147,19 @@ const TeacherDashboard = ({ user }) => {
     };
 
     const sortedFiles = [...files].sort((a, b) => {
+        const typeA = getDisplayType(a.mimeType);
+        const typeB = getDisplayType(b.mimeType);
+        
+        if (typeA === 'Folder' && typeB !== 'Folder') return -1;
+        if (typeA !== 'Folder' && typeB === 'Folder') return 1;
+
         if (sortConfig.key === 'name') {
             return sortConfig.direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
         }
         if (sortConfig.key === 'date') {
-            return sortConfig.direction === 'asc' ? new Date(a.createdTime) - new Date(b.createdTime) : new Date(b.createdTime) - new Date(a.createdTime);
+            return sortConfig.direction === 'asc' 
+                ? new Date(a.createdTime) - new Date(b.createdTime) 
+                : new Date(b.createdTime) - new Date(a.createdTime);
         }
         return 0;
     });
@@ -172,7 +177,9 @@ const TeacherDashboard = ({ user }) => {
         breadcrumbContainer: { display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px', color: '#64748b' },
         breadcrumbLink: { color: '#2563eb', cursor: 'pointer', textDecoration: 'none', fontWeight: '500' },
         searchInput: { padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', width: '300px', fontSize: '14px', outline: 'none' },
-        newFolderBtn: { backgroundColor: '#2563eb', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+        newFolderBtn: { backgroundColor: '#ffffff', color: '#1e293b', border: '1px solid #e2e8f0', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+        refreshBtn: { backgroundColor: '#ffffff', color: '#2563eb', border: '1px solid #2563eb', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+        syncBtn: { backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
         card: { backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', overflow: 'hidden' },
         table: { width: '100%', borderCollapse: 'collapse' },
         th: { padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer' },
@@ -189,7 +196,7 @@ const TeacherDashboard = ({ user }) => {
                 <div style={styles.sidebarRole}>Evaluator</div>
                 <nav>
                     <div style={styles.navItemActive}>Dashboard</div>
-                    <div style={styles.navItem}>Profile</div>
+                    <div style={styles.navItem}>AI Reports</div>
                     <div style={styles.navItem}>Settings</div>
                 </nav>
                 <button onClick={() => supabase.auth.signOut()} style={styles.signOutBtn}>Sign Out</button>
@@ -198,7 +205,7 @@ const TeacherDashboard = ({ user }) => {
             <main style={styles.main}>
                 <header style={styles.header}>
                     <div>
-                        <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>File Manager</h1>
+                        <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>Teacher Dashboard</h1>
                         <div style={styles.breadcrumbContainer}>
                             {!isSearching ? navStack.map((folder, index) => (
                                 <span key={folder.id}>
@@ -216,11 +223,19 @@ const TeacherDashboard = ({ user }) => {
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <input 
                             type="text" 
-                            placeholder="Search root drive..." 
+                            placeholder="Search drive..." 
                             style={styles.searchInput}
                             value={searchTerm}
                             onChange={handleSearch}
                         />
+                        <button onClick={handleManualRefresh} style={styles.refreshBtn}>↻ Refresh List</button>
+                        <button 
+                            onClick={handleManualSync} 
+                            style={styles.syncBtn} 
+                            disabled={isSyncing}
+                        >
+                            {isSyncing ? "Syncing..." : "Sync Submissions"}
+                        </button>
                         <button onClick={handleCreateFolder} style={styles.newFolderBtn}>+ New Folder</button>
                     </div>
                 </header>
@@ -228,52 +243,61 @@ const TeacherDashboard = ({ user }) => {
                 {error && <div style={{ color: 'red', padding: '10px', background: '#fff1f1', borderRadius: '8px' }}>{error}</div>}
 
                 <div style={styles.card}>
-                    {loading ? <p style={{ padding: '20px' }}>Syncing with Google Drive...</p> : (
+                    {loading ? <p style={{ padding: '20px' }}>Accessing Google Drive...</p> : (
                         <table style={styles.table}>
                             <thead>
                                 <tr>
                                     <th style={styles.th} onClick={() => requestSort('name')}>
                                         Name {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
                                     </th>
-                                    <th style={{ ...styles.th, cursor: 'default' }}>Type</th>
+                                    <th style={styles.th}>Type</th>
                                     <th style={styles.th} onClick={() => requestSort('date')}>
-                                        Date Created {sortConfig.key === 'date' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
+                                        Submitted At {sortConfig.key === 'date' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
                                     </th>
-                                    <th style={{ ...styles.th, cursor: 'default' }}>Actions</th>
+                                    <th style={styles.th}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedFiles.map(file => (
-                                    <tr key={file.id}>
-                                        <td style={styles.td}>
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                {file.type === 'Folder' ? <FolderIcon /> : <FileIcon />}
-                                                {file.type === 'Folder' ? (
-                                                    <span 
-                                                        style={styles.folderName} 
-                                                        onClick={() => handleFolderClick(file.id, file.name)}
-                                                    >
-                                                        {file.name}
-                                                    </span>
-                                                ) : (
-                                                    <span>{file.name}</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td style={styles.td}><span style={styles.badge}>{file.type}</span></td>
-                                        <td style={styles.td}>{new Date(file.createdTime).toLocaleDateString()}</td>
-                                        <td style={styles.td}>
-                                            <button onClick={() => handleDelete(file.id)} style={styles.deleteBtn}>Delete</button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {sortedFiles.length === 0 ? (
+                                    <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No submissions found in this folder. Click Sync to fetch them.</td></tr>
+                                ) : sortedFiles.map(file => {
+                                    const displayType = getDisplayType(file.mimeType);
+                                    return (
+                                        <tr key={file.id}>
+                                            <td style={styles.td}>
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    {displayType === 'Folder' ? <FolderIcon /> : <FileIcon />}
+                                                    {displayType === 'Folder' ? (
+                                                        <span 
+                                                            style={styles.folderName} 
+                                                            onClick={() => handleFolderClick(file.id, file.name)}
+                                                        >
+                                                            {file.name}
+                                                        </span>
+                                                    ) : (
+                                                        <a 
+                                                            href={file.webViewLink} 
+                                                            target="_blank" 
+                                                            rel="noreferrer" 
+                                                            style={{ textDecoration: 'none', color: '#1e293b', fontWeight: '500' }}
+                                                        >
+                                                            {file.name}
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td style={styles.td}><span style={styles.badge}>{displayType}</span></td>
+                                            <td style={styles.td}>{file.submittedAt || new Date(file.createdTime).toLocaleDateString()}</td>
+                                            <td style={styles.td}>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button onClick={() => handleDelete(file.id)} style={styles.deleteBtn}>Delete</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
-                    )}
-                    {!loading && files.length === 0 && (
-                        <p style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                            {isSearching ? "No matches found." : "This folder is empty."}
-                        </p>
                     )}
                 </div>
             </main>

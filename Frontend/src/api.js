@@ -18,7 +18,7 @@ export const verifyStudentWithBackend = async (googleName, googleEmail) => {
 };
 
 /**
- * DRIVE: Fetches all files from the Teacher's root folder
+ * DRIVE: Fetches files from a specific folder (Now used for Nested Navigation)
  */
 export const getDriveFiles = async (folderId) => {
     const response = await fetch(`${API_BASE_URL}/drive/files/${folderId}`);
@@ -33,9 +33,7 @@ export const deleteDriveFile = async (fileId) => {
     const response = await fetch(`${API_BASE_URL}/drive/files/${fileId}`, {
         method: 'DELETE',
     });
-    if (!response.ok) {
-        throw new Error('Failed to delete file from Google Drive.');
-    }
+    if (!response.ok) throw new Error('Failed to delete file from Google Drive.');
     return true; 
 };
 
@@ -53,7 +51,7 @@ export const createDriveFolder = async (folderName, parentId) => {
 };
 
 /**
- * Search Function
+ * DRIVE: Search Function
  */
 export const searchDriveFiles = async (query) => {
     const response = await fetch(`${API_BASE_URL}/drive/search?q=${encodeURIComponent(query)}`);
@@ -62,10 +60,10 @@ export const searchDriveFiles = async (query) => {
 };
 
 /**
- * Sync Function
+ * DRIVE: Triggers the Java logic to read the Sheet, Route files, and fetch metadata
  */
 export const syncSubmissionsWithBackend = async () => {
     const response = await fetch(`${API_BASE_URL}/drive/sync-submissions`);
-    if (!response.ok) throw new Error('Sync failed');
+    if (!response.ok) throw new Error('Submission sync failed.');
     return await response.json();
 };
