@@ -88,28 +88,6 @@ cd Backend/docs-evaluator
 mvn spring-boot:run
 ```
 
-Configure `application.properties` or `application.yml`:
-
-```properties
-# Google OAuth
-spring.security.oauth2.client.registration.google.client-id=your_client_id
-spring.security.oauth2.client.registration.google.client-secret=your_client_secret
-
-# Supabase / PostgreSQL
-spring.datasource.url=your_supabase_db_url
-spring.datasource.username=your_db_user
-spring.datasource.password=your_db_password
-
-# AI Providers
-gemini.api.key=your_gemini_api_key
-openai.api.key=your_openai_api_key
-openrouter.api.key=your_openrouter_api_key
-
-# Google APIs
-google.drive.credentials=path_to_credentials.json
-google.sheets.spreadsheet-id=your_spreadsheet_id
-```
-
 ---
 
 ## 👥 User Roles
@@ -128,40 +106,6 @@ google.sheets.spreadsheet-id=your_spreadsheet_id
 
 ---
 
-## 🤖 AI Evaluation Criteria
-
-Each submitted document is evaluated across four dimensions:
-
-| Criterion | Description |
-|---|---|
-| **Completeness** | Are all required IEEE sections present? |
-| **Clarity** | Is the content clear and understandable? |
-| **Consistency** | Is terminology and formatting consistent throughout? |
-| **Overall Quality** | Does the document meet the expected IEEE standard? |
-
----
-
-## ⚙️ System Modules
-
-| Module | Transactions |
-|---|---|
-| Google OAuth Integration | Teacher login, Student login |
-| Google Drive Integration | Create class folder, Fetch document from Drive |
-| Google Sheets Integration | Upload class list, Record submission, Record AI results, Record teacher feedback |
-| Document Content Extraction | Submit document (PDF text extraction) |
-| AI Integration | Run AI evaluation, View AI evaluation results |
-
----
-
-## ⚠️ Constraints & Limitations
-
-- Documents must be in **English** only
-- Accepted file formats: **PDF** (and **DOCX** depending on the AI provider)
-- Requires a **stable internet connection** for Google and AI API access
-- Google and AI APIs are subject to **usage quotas and rate limits**
-- Deployed on **CIT-U local servers** — performance subject to shared server constraints
-
----
 
 ## 👨‍💻 Proponents
 
