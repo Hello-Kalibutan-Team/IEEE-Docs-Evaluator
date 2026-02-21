@@ -34,3 +34,6 @@ build/
 
 # Ignore local Spring Boot secrets
 **/src/main/resources/application-secrets.properties
+
+# Ignore Google Service Account Keys
+**/src/main/resources/google-sheets-credentials.json
