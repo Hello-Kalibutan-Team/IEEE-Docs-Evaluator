@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getDriveFiles, deleteDriveFile, createDriveFolder, searchDriveFiles, syncSubmissionsWithBackend } from './api'; 
+import { getDriveFiles, deleteDriveFile, createDriveFolder, searchDriveFiles, syncSubmissionsWithBackend, analyzeDocumentWithAI, getEvaluationHistory } from './api'; 
 import { supabase } from './supabaseClient';
 
-// --- SVG Icons ---
 const FolderIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '10px', color: '#2563eb' }}>
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -18,14 +17,26 @@ const FileIcon = () => (
 
 const TeacherDashboard = ({ user }) => {
     const ROOT_ID = '1coTNznsUzG_n7Oztc8EZJ4wpxlssbQ-z';
+    const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'reports'
+    
+    // Drive State
     const [navStack, setNavStack] = useState([{ id: ROOT_ID, name: 'IEEE Root' }]);
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isSyncing, setIsSyncing] = useState(false); // New state for backend process
+    const [isSyncing, setIsSyncing] = useState(false);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
+    // AI Modal & History State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedFileForAi, setSelectedFileForAi] = useState(null);
+    const [aiResult, setAiResult] = useState('');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [historyLogs, setHistoryLogs] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
 
     const currentFolder = navStack[navStack.length - 1];
 
@@ -37,7 +48,6 @@ const TeacherDashboard = ({ user }) => {
         return 'File';
     };
 
-    // --- Core Data Loader: Just pulls the current file list ---
     const loadFiles = async (folderId) => {
         try {
             setLoading(true);
@@ -51,20 +61,32 @@ const TeacherDashboard = ({ user }) => {
         }
     };
 
-    useEffect(() => {
-        if (!isSearching) {
-            loadFiles(currentFolder.id);
+    const loadHistory = async () => {
+        try {
+            setLoadingHistory(true);
+            const data = await getEvaluationHistory();
+            setHistoryLogs(data);
+        } catch (err) {
+            setError("Failed to load history: " + err.message);
+        } finally {
+            setLoadingHistory(false);
         }
-    }, [currentFolder.id, isSearching]); 
+    };
 
-    // --- Manual Sync: Triggers Spreadsheet Reading & Routing ---
+    // SUPER IMPORTANT -- THIS LOADS THE FILES WHEN BUTTONS ARE PRESSED -- SUPER IMPORTANT
+    useEffect(() => {
+        if (currentView === 'dashboard' && !isSearching) {
+            loadFiles(currentFolder.id); 
+        } else if (currentView === 'reports') {
+            loadHistory();
+        }
+    }, [currentFolder.id, isSearching, currentView]); 
+    // SUPER IMPORTANT THIS LOADS THE FILES WHEN BUTTONS ARE PRESSED -- SUPER IMPORTANT
     const handleManualSync = async () => {
         try {
             setIsSyncing(true);
             setError('');
-            // Triggers the Java logic to read Sheet and replicate files
             await syncSubmissionsWithBackend(); 
-            // Refresh current view to show newly organized folders/files
             await loadFiles(currentFolder.id); 
             alert("Sync and organization complete!");
         } catch (err) {
@@ -72,11 +94,6 @@ const TeacherDashboard = ({ user }) => {
         } finally {
             setIsSyncing(false);
         }
-    };
-
-    // --- Manual Refresh: Just re-lists files without running the Sync logic ---
-    const handleManualRefresh = () => {
-        loadFiles(currentFolder.id);
     };
 
     const handleSearch = async (e) => {
@@ -112,21 +129,6 @@ const TeacherDashboard = ({ user }) => {
         setNavStack(navStack.slice(0, index + 1));
     };
 
-    const handleCreateFolder = async () => {
-        if (isSearching) {
-            alert("Please exit search mode to create folders.");
-            return;
-        }
-        const folderName = prompt("Enter new folder name:");
-        if (!folderName) return;
-        try {
-            const newFolder = await createDriveFolder(folderName, currentFolder.id);
-            setFiles([newFolder, ...files]);
-        } catch (err) {
-            alert("Creation failed: " + err.message);
-        }
-    };
-
     const handleDelete = async (fileId) => {
         if (!window.confirm("Are you sure you want to delete this?")) return;
         try {
@@ -144,6 +146,26 @@ const TeacherDashboard = ({ user }) => {
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+    };
+
+    // --- AI Logic ---
+    const handleAnalyzeClick = (file) => {
+        setSelectedFileForAi(file);
+        setAiResult('');
+        setIsModalOpen(true);
+    };
+
+    const triggerAnalysis = async (modelName) => {
+        setIsAnalyzing(true);
+        setAiResult('');
+        try {
+            const data = await analyzeDocumentWithAI(selectedFileForAi.id, selectedFileForAi.name, modelName);
+            setAiResult(data.analysis);
+        } catch (err) {
+            setAiResult('Error: ' + err.message);
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const sortedFiles = [...files].sort((a, b) => {
@@ -186,7 +208,8 @@ const TeacherDashboard = ({ user }) => {
         td: { padding: '14px 16px', fontSize: '14px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' },
         folderName: { color: '#2563eb', cursor: 'pointer', fontWeight: '500' },
         badge: { backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' },
-        deleteBtn: { color: '#dc2626', background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' }
+        deleteBtn: { color: '#dc2626', background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' },
+        analyzeBtn: { color: '#059669', background: 'none', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' }
     };
 
     return (
@@ -195,111 +218,211 @@ const TeacherDashboard = ({ user }) => {
                 <div style={styles.sidebarBrand}>IEEE Docs</div>
                 <div style={styles.sidebarRole}>Evaluator</div>
                 <nav>
-                    <div style={styles.navItemActive}>Dashboard</div>
-                    <div style={styles.navItem}>AI Reports</div>
-                    <div style={styles.navItem}>Settings</div>
+                    <div 
+                        style={currentView === 'dashboard' ? styles.navItemActive : styles.navItem}
+                        onClick={() => setCurrentView('dashboard')}
+                    >
+                        Dashboard
+                    </div>
+                    <div 
+                        style={currentView === 'reports' ? styles.navItemActive : styles.navItem}
+                        onClick={() => setCurrentView('reports')}
+                    >
+                        AI Reports
+                    </div>
                 </nav>
                 <button onClick={() => supabase.auth.signOut()} style={styles.signOutBtn}>Sign Out</button>
             </aside>
 
             <main style={styles.main}>
-                <header style={styles.header}>
-                    <div>
-                        <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>Teacher Dashboard</h1>
-                        <div style={styles.breadcrumbContainer}>
-                            {!isSearching ? navStack.map((folder, index) => (
-                                <span key={folder.id}>
-                                    <span 
-                                        style={index === navStack.length - 1 ? {} : styles.breadcrumbLink}
-                                        onClick={() => handleBreadcrumbClick(index)}
-                                    >
-                                        {folder.name}
-                                    </span>
-                                    {index < navStack.length - 1 && <span> / </span>}
-                                </span>
-                            )) : <span style={{ fontWeight: '600', color: '#2563eb' }}>Search Results</span>}
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <input 
-                            type="text" 
-                            placeholder="Search drive..." 
-                            style={styles.searchInput}
-                            value={searchTerm}
-                            onChange={handleSearch}
-                        />
-                        <button onClick={handleManualRefresh} style={styles.refreshBtn}>↻ Refresh List</button>
-                        <button 
-                            onClick={handleManualSync} 
-                            style={styles.syncBtn} 
-                            disabled={isSyncing}
-                        >
-                            {isSyncing ? "Syncing..." : "Sync Submissions"}
-                        </button>
-                        <button onClick={handleCreateFolder} style={styles.newFolderBtn}>+ New Folder</button>
-                    </div>
-                </header>
-
                 {error && <div style={{ color: 'red', padding: '10px', background: '#fff1f1', borderRadius: '8px' }}>{error}</div>}
 
-                <div style={styles.card}>
-                    {loading ? <p style={{ padding: '20px' }}>Accessing Google Drive...</p> : (
-                        <table style={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th style={styles.th} onClick={() => requestSort('name')}>
-                                        Name {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
-                                    </th>
-                                    <th style={styles.th}>Type</th>
-                                    <th style={styles.th} onClick={() => requestSort('date')}>
-                                        Submitted At {sortConfig.key === 'date' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
-                                    </th>
-                                    <th style={styles.th}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedFiles.length === 0 ? (
-                                    <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No submissions found in this folder. Click Sync to fetch them.</td></tr>
-                                ) : sortedFiles.map(file => {
-                                    const displayType = getDisplayType(file.mimeType);
-                                    return (
-                                        <tr key={file.id}>
-                                            <td style={styles.td}>
-                                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                    {displayType === 'Folder' ? <FolderIcon /> : <FileIcon />}
-                                                    {displayType === 'Folder' ? (
-                                                        <span 
-                                                            style={styles.folderName} 
-                                                            onClick={() => handleFolderClick(file.id, file.name)}
-                                                        >
-                                                            {file.name}
-                                                        </span>
-                                                    ) : (
-                                                        <a 
-                                                            href={file.webViewLink} 
-                                                            target="_blank" 
-                                                            rel="noreferrer" 
-                                                            style={{ textDecoration: 'none', color: '#1e293b', fontWeight: '500' }}
-                                                        >
-                                                            {file.name}
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td style={styles.td}><span style={styles.badge}>{displayType}</span></td>
-                                            <td style={styles.td}>{file.submittedAt || new Date(file.createdTime).toLocaleDateString()}</td>
-                                            <td style={styles.td}>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button onClick={() => handleDelete(file.id)} style={styles.deleteBtn}>Delete</button>
-                                                </div>
-                                            </td>
+                {/* --- DASHBOARD VIEW --- */}
+                {currentView === 'dashboard' && (
+                    <>
+                        <header style={styles.header}>
+                            <div>
+                                <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>Teacher Dashboard</h1>
+                                <div style={styles.breadcrumbContainer}>
+                                    {!isSearching ? navStack.map((folder, index) => (
+                                        <span key={folder.id}>
+                                            <span 
+                                                style={index === navStack.length - 1 ? {} : styles.breadcrumbLink}
+                                                onClick={() => handleBreadcrumbClick(index)}
+                                            >
+                                                {folder.name}
+                                            </span>
+                                            {index < navStack.length - 1 && <span> / </span>}
+                                        </span>
+                                    )) : <span style={{ fontWeight: '600', color: '#2563eb' }}>Search Results</span>}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <input 
+                                    type="text" 
+                                    placeholder="Search drive..." 
+                                    style={styles.searchInput}
+                                    value={searchTerm}
+                                    onChange={handleSearch}
+                                />
+                                <button onClick={() => loadFiles(currentFolder.id)} style={styles.refreshBtn}>Refresh List</button>
+                                <button onClick={handleManualSync} style={styles.syncBtn} disabled={isSyncing}>
+                                    {isSyncing ? "Syncing..." : "Sync Submissions"}
+                                </button>
+                            </div>
+                        </header>
+
+                        <div style={styles.card}>
+                            {loading ? <p style={{ padding: '20px' }}>Accessing Google Drive...</p> : (
+                                <table style={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th style={styles.th} onClick={() => requestSort('name')}>
+                                                Name {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? 'Up' : 'Down') : ''}
+                                            </th>
+                                            <th style={styles.th}>Type</th>
+                                            <th style={styles.th} onClick={() => requestSort('date')}>Submitted At</th>
+                                            <th style={styles.th}>Actions</th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
+                                    </thead>
+                                    <tbody>
+                                        {sortedFiles.length === 0 ? (
+                                            <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No submissions found.</td></tr>
+                                        ) : sortedFiles.map(file => {
+                                            const displayType = getDisplayType(file.mimeType);
+                                            return (
+                                                <tr key={file.id}>
+                                                    <td style={styles.td}>
+                                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                            {displayType === 'Folder' ? <FolderIcon /> : <FileIcon />}
+                                                            {displayType === 'Folder' ? (
+                                                                <span style={styles.folderName} onClick={() => handleFolderClick(file.id, file.name)}>{file.name}</span>
+                                                            ) : (
+                                                                <a href={file.webViewLink} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: '#1e293b', fontWeight: '500' }}>{file.name}</a>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td style={styles.td}><span style={styles.badge}>{displayType}</span></td>
+                                                    <td style={styles.td}>{file.submittedAt || new Date(file.createdTime).toLocaleDateString()}</td>
+                                                    <td style={styles.td}>
+                                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                                            {displayType !== 'Folder' && (
+                                                                <button onClick={() => handleAnalyzeClick(file)} style={styles.analyzeBtn}>Analyze</button>
+                                                            )}
+                                                            <button onClick={() => handleDelete(file.id)} style={styles.deleteBtn}>Delete</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* --- AI REPORTS VIEW --- */}
+                {currentView === 'reports' && (
+                    <>
+                        <header style={styles.header}>
+                            <div>
+                                <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>AI Evaluation History</h1>
+                                <div style={styles.breadcrumbContainer}>Saved results from Supabase Database</div>
+                            </div>
+                            <button onClick={loadHistory} style={styles.refreshBtn}>Refresh History</button>
+                        </header>
+
+                        <div style={styles.card}>
+                            {loadingHistory ? <p style={{ padding: '20px' }}>Loading history...</p> : (
+                                <table style={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th style={styles.th}>Date Analyzed</th>
+                                            <th style={styles.th}>Document Name</th>
+                                            <th style={styles.th}>Model</th>
+                                            <th style={styles.th}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {historyLogs.length === 0 ? (
+                                            <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No AI evaluations have been saved yet.</td></tr>
+                                        ) : historyLogs.map(log => (
+                                            <tr key={log.id}>
+                                                <td style={styles.td}>{new Date(log.evaluatedAt).toLocaleString()}</td>
+                                                <td style={styles.td}><span style={{fontWeight: '500'}}>{log.fileName}</span></td>
+                                                <td style={styles.td}><span style={styles.badge}>{log.modelUsed}</span></td>
+                                                <td style={styles.td}>
+                                                    <button onClick={() => setSelectedHistoryItem(log)} style={styles.analyzeBtn}>View Full Report</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* --- MODALS --- */}
+                
+                {/* 1. New Analysis Modal */}
+                {isModalOpen && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
+                            <h2 style={{marginTop: 0, color: '#1e293b'}}>Analyze: {selectedFileForAi?.name}</h2>
+                            
+                            {!isAnalyzing && !aiResult && (
+                                <div>
+                                    <p style={{color: '#64748b'}}>Select an AI model to evaluate this document. Results will be saved automatically.</p>
+                                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                                        <button onClick={() => triggerAnalysis('openai')} style={styles.syncBtn}>Use OpenAI (GPT)</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isAnalyzing && (
+                                <div style={{ padding: '20px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>
+                                    <p>AI is reading the document and saving to Supabase... please wait.</p>
+                                </div>
+                            )}
+
+                            {aiResult && (
+                                <div>
+                                    <h3 style={{color: '#1e293b'}}>AI Evaluation Result:</h3>
+                                    <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6' }}>
+                                        {aiResult}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setIsModalOpen(false)} style={styles.newFolderBtn}>Close</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. View Saved History Modal */}
+                {selectedHistoryItem && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '700px', maxHeight: '85vh', overflowY: 'auto' }}>
+                            <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '20px' }}>
+                                <h2 style={{marginTop: 0, marginBottom: '5px', color: '#1e293b'}}>Saved Evaluation Report</h2>
+                                <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>File: {selectedHistoryItem.fileName}</p>
+                                <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>Date: {new Date(selectedHistoryItem.evaluatedAt).toLocaleString()}</p>
+                            </div>
+                            
+                            <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6' }}>
+                                {selectedHistoryItem.evaluationResult}
+                            </div>
+
+                            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setSelectedHistoryItem(null)} style={styles.newFolderBtn}>Close Report</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );

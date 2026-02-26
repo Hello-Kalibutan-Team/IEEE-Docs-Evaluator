@@ -67,3 +67,26 @@ export const syncSubmissionsWithBackend = async () => {
     if (!response.ok) throw new Error('Submission sync failed.');
     return await response.json();
 };
+
+/**
+ * AI: Triggers document extraction and AI analysis
+ */
+export const analyzeDocumentWithAI = async (fileId, fileName, model) => {
+    const response = await fetch(`${API_BASE_URL}/ai/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId, fileName, model })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Analysis failed.');
+    return data;
+};
+
+/**
+ * AI: Fetches the evaluation history
+ */
+export const getEvaluationHistory = async () => {
+    const response = await fetch(`${API_BASE_URL}/ai/history`);
+    if (!response.ok) throw new Error('Failed to fetch history.');
+    return await response.json();
+};
