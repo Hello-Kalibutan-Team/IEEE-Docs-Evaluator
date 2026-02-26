@@ -6,6 +6,7 @@ import com.google.api.services.drive.model.FileList;
 import com.ieee.evaluator.model.DriveFile;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -90,6 +91,15 @@ public class GoogleDriveService {
         return null;
     }
 
+    /**
+     * Downloads the file content as a byte array to be processed by Tika/AI.
+     */
+    public byte[] downloadFile(String fileId) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream);
+        return outputStream.toByteArray();
+    }
+
     private DriveFile mapToModel(File f) {
         DriveFile driveFile = new DriveFile();
         driveFile.setId(f.getId());
@@ -148,7 +158,7 @@ public class GoogleDriveService {
     /**
      * Lists all files in a source folder and replicates them into the target folder.
      */
-        public void copyAllFilesFromFolder(String sourceFolderId, String targetFolderId) throws IOException {
+    public void copyAllFilesFromFolder(String sourceFolderId, String targetFolderId) throws IOException {
         // We must ensure 'supportsAllDrives' is true if students are using school/shared drives
         com.google.api.services.drive.model.FileList result = driveService.files().list()
                 .setQ("'" + sourceFolderId + "' in parents and trashed = false")
