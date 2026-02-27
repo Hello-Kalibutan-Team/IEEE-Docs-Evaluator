@@ -17,9 +17,8 @@ const FileIcon = () => (
 
 const TeacherDashboard = ({ user }) => {
     const ROOT_ID = '1coTNznsUzG_n7Oztc8EZJ4wpxlssbQ-z';
-    const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'reports'
+    const [currentView, setCurrentView] = useState('dashboard');
     
-    // Drive State
     const [navStack, setNavStack] = useState([{ id: ROOT_ID, name: 'IEEE Root' }]);
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -29,7 +28,6 @@ const TeacherDashboard = ({ user }) => {
     const [isSearching, setIsSearching] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
-    // AI Modal & History State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedFileForAi, setSelectedFileForAi] = useState(null);
     const [aiResult, setAiResult] = useState('');
@@ -73,15 +71,14 @@ const TeacherDashboard = ({ user }) => {
         }
     };
 
-    // SUPER IMPORTANT -- THIS LOADS THE FILES WHEN BUTTONS ARE PRESSED -- SUPER IMPORTANT
     useEffect(() => {
         if (currentView === 'dashboard' && !isSearching) {
             loadFiles(currentFolder.id); 
         } else if (currentView === 'reports') {
             loadHistory();
         }
-    }, [currentFolder.id, isSearching, currentView]); 
-    // SUPER IMPORTANT THIS LOADS THE FILES WHEN BUTTONS ARE PRESSED -- SUPER IMPORTANT
+    }, [currentFolder.id, isSearching, currentView]);
+
     const handleManualSync = async () => {
         try {
             setIsSyncing(true);
@@ -148,7 +145,6 @@ const TeacherDashboard = ({ user }) => {
         setSortConfig({ key, direction });
     };
 
-    // --- AI Logic ---
     const handleAnalyzeClick = (file) => {
         setSelectedFileForAi(file);
         setAiResult('');
@@ -161,6 +157,8 @@ const TeacherDashboard = ({ user }) => {
         try {
             const data = await analyzeDocumentWithAI(selectedFileForAi.id, selectedFileForAi.name, modelName);
             setAiResult(data.analysis);
+            // Refresh history after a new analysis is saved/updated
+            if (currentView === 'reports') loadHistory();
         } catch (err) {
             setAiResult('Error: ' + err.message);
         } finally {
@@ -171,10 +169,8 @@ const TeacherDashboard = ({ user }) => {
     const sortedFiles = [...files].sort((a, b) => {
         const typeA = getDisplayType(a.mimeType);
         const typeB = getDisplayType(b.mimeType);
-        
         if (typeA === 'Folder' && typeB !== 'Folder') return -1;
         if (typeA !== 'Folder' && typeB === 'Folder') return 1;
-
         if (sortConfig.key === 'name') {
             return sortConfig.direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
         }
@@ -187,8 +183,8 @@ const TeacherDashboard = ({ user }) => {
     });
 
     const styles = {
-        root: { display: 'flex', height: '100vh', fontFamily: "'DM Sans', sans-serif", backgroundColor: '#f0f2f7' },
-        sidebar: { width: '240px', backgroundColor: '#0f172a', color: '#e2e8f0', padding: '28px 20px', display: 'flex', flexDirection: 'column' },
+        root: { display: 'flex', height: '100vh', width: '100vw', fontFamily: "'DM Sans', sans-serif", backgroundColor: '#f0f2f7', overflow: 'hidden' },
+        sidebar: { width: '240px', backgroundColor: '#0f172a', color: '#e2e8f0', padding: '28px 20px', display: 'flex', flexDirection: 'column', flexShrink: 0 },
         sidebarBrand: { fontSize: '18px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' },
         sidebarRole: { fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '36px' },
         navItemActive: { padding: '10px 14px', borderRadius: '8px', backgroundColor: '#e11d48', color: '#ffffff', fontWeight: '600', cursor: 'pointer', marginBottom: '4px' },
@@ -196,24 +192,43 @@ const TeacherDashboard = ({ user }) => {
         signOutBtn: { marginTop: 'auto', background: 'none', color: '#94a3b8', border: '1px solid #1e293b', borderRadius: '8px', padding: '10px 14px', cursor: 'pointer', textAlign: 'left' },
         main: { flex: 1, padding: '36px 40px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px' },
         header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+        headerTitle: { fontSize: '24px', margin: '0 0 8px 0', color: '#0F172A', fontWeight: '700' },
         breadcrumbContainer: { display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px', color: '#64748b' },
         breadcrumbLink: { color: '#2563eb', cursor: 'pointer', textDecoration: 'none', fontWeight: '500' },
-        searchInput: { padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', width: '300px', fontSize: '14px', outline: 'none' },
+        searchInput: { padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', width: '300px', fontSize: '14px', outline: 'none', backgroundColor: '#ffffff' },
         newFolderBtn: { backgroundColor: '#ffffff', color: '#1e293b', border: '1px solid #e2e8f0', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
         refreshBtn: { backgroundColor: '#ffffff', color: '#2563eb', border: '1px solid #2563eb', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
         syncBtn: { backgroundColor: '#059669', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
         card: { backgroundColor: '#ffffff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', overflow: 'hidden' },
+        tableContainer: { maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' },
         table: { width: '100%', borderCollapse: 'collapse' },
-        th: { padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer' },
+        th: { position: 'sticky', top: 0, padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', zIndex: 1, cursor: 'pointer' },
         td: { padding: '14px 16px', fontSize: '14px', color: '#1e293b', borderBottom: '1px solid #f1f5f9' },
         folderName: { color: '#2563eb', cursor: 'pointer', fontWeight: '500' },
         badge: { backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' },
         deleteBtn: { color: '#dc2626', background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' },
-        analyzeBtn: { color: '#059669', background: 'none', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' }
+        analyzeBtn: { color: '#059669', background: 'none', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '5px 12px', fontSize: '13px', cursor: 'pointer' },
+        loadingRow: { animation: 'pulse-light 1.5s infinite ease-in-out' }
     };
 
     return (
         <div style={styles.root}>
+            {/* Inject Animation Styles */}
+            <style>
+                {`
+                @keyframes pulse-light {
+                    0% { background-color: #ffffff; }
+                    50% { background-color: #eff6ff; }
+                    100% { background-color: #ffffff; }
+                }
+                .loading-row { animation: pulse-light 1.5s infinite ease-in-out; }
+                ::-webkit-scrollbar { width: 8px; }
+                ::-webkit-scrollbar-track { background: #f1f5f9; }
+                ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+                `}
+            </style>
+
             <aside style={styles.sidebar}>
                 <div style={styles.sidebarBrand}>IEEE Docs</div>
                 <div style={styles.sidebarRole}>Evaluator</div>
@@ -237,12 +252,11 @@ const TeacherDashboard = ({ user }) => {
             <main style={styles.main}>
                 {error && <div style={{ color: 'red', padding: '10px', background: '#fff1f1', borderRadius: '8px' }}>{error}</div>}
 
-                {/* --- DASHBOARD VIEW --- */}
                 {currentView === 'dashboard' && (
                     <>
                         <header style={styles.header}>
                             <div>
-                                <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>Teacher Dashboard</h1>
+                                <h1 style={styles.headerTitle}>Teacher Dashboard</h1>
                                 <div style={styles.breadcrumbContainer}>
                                     {!isSearching ? navStack.map((folder, index) => (
                                         <span key={folder.id}>
@@ -260,12 +274,17 @@ const TeacherDashboard = ({ user }) => {
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <input 
                                     type="text" 
-                                    placeholder="Search drive..." 
+                                    placeholder="Search Drive..." 
                                     style={styles.searchInput}
                                     value={searchTerm}
                                     onChange={handleSearch}
                                 />
                                 <button onClick={() => loadFiles(currentFolder.id)} style={styles.refreshBtn}>Refresh List</button>
+                                <button onClick={async () => {
+                                    const name = prompt("Enter folder name:");
+                                    if(name) await createDriveFolder(name, currentFolder.id);
+                                    loadFiles(currentFolder.id);
+                                }} style={styles.newFolderBtn}>+ New Folder</button>
                                 <button onClick={handleManualSync} style={styles.syncBtn} disabled={isSyncing}>
                                     {isSyncing ? "Syncing..." : "Sync Submissions"}
                                 </button>
@@ -273,20 +292,24 @@ const TeacherDashboard = ({ user }) => {
                         </header>
 
                         <div style={styles.card}>
-                            {loading ? <p style={{ padding: '20px' }}>Accessing Google Drive...</p> : (
+                            <div style={styles.tableContainer}>
                                 <table style={styles.table}>
                                     <thead>
                                         <tr>
-                                            <th style={styles.th} onClick={() => requestSort('name')}>
-                                                Name {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? 'Up' : 'Down') : ''}
-                                            </th>
+                                            <th style={styles.th} onClick={() => requestSort('name')}>Name</th>
                                             <th style={styles.th}>Type</th>
                                             <th style={styles.th} onClick={() => requestSort('date')}>Submitted At</th>
                                             <th style={styles.th}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {sortedFiles.length === 0 ? (
+                                        {loading ? (
+                                            [...Array(5)].map((_, i) => (
+                                                <tr key={i} className="loading-row">
+                                                    <td colSpan="4" style={{ height: '50px', borderBottom: '1px solid #f1f5f9' }}></td>
+                                                </tr>
+                                            ))
+                                        ) : sortedFiles.length === 0 ? (
                                             <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No submissions found.</td></tr>
                                         ) : sortedFiles.map(file => {
                                             const displayType = getDisplayType(file.mimeType);
@@ -317,24 +340,23 @@ const TeacherDashboard = ({ user }) => {
                                         })}
                                     </tbody>
                                 </table>
-                            )}
+                            </div>
                         </div>
                     </>
                 )}
 
-                {/* --- AI REPORTS VIEW --- */}
                 {currentView === 'reports' && (
                     <>
                         <header style={styles.header}>
                             <div>
-                                <h1 style={{ fontSize: '24px', margin: '0 0 8px 0' }}>AI Evaluation History</h1>
+                                <h1 style={styles.headerTitle}>AI Evaluation History</h1>
                                 <div style={styles.breadcrumbContainer}>Saved results from Supabase Database</div>
                             </div>
                             <button onClick={loadHistory} style={styles.refreshBtn}>Refresh History</button>
                         </header>
 
                         <div style={styles.card}>
-                            {loadingHistory ? <p style={{ padding: '20px' }}>Loading history...</p> : (
+                            <div style={styles.tableContainer}>
                                 <table style={styles.table}>
                                     <thead>
                                         <tr>
@@ -345,8 +367,14 @@ const TeacherDashboard = ({ user }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {historyLogs.length === 0 ? (
-                                            <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No AI evaluations have been saved yet.</td></tr>
+                                        {loadingHistory ? (
+                                            [...Array(5)].map((_, i) => (
+                                                <tr key={i} className="loading-row">
+                                                    <td colSpan="4" style={{ height: '50px', borderBottom: '1px solid #f1f5f9' }}></td>
+                                                </tr>
+                                            ))
+                                        ) : historyLogs.length === 0 ? (
+                                            <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No evaluations saved.</td></tr>
                                         ) : historyLogs.map(log => (
                                             <tr key={log.id}>
                                                 <td style={styles.td}>{new Date(log.evaluatedAt).toLocaleString()}</td>
@@ -359,82 +387,46 @@ const TeacherDashboard = ({ user }) => {
                                         ))}
                                     </tbody>
                                 </table>
-                            )}
+                            </div>
                         </div>
                     </>
                 )}
 
-                {/* --- MODALS --- */}
-                
-                {/* 1. New Analysis Modal */}
+                {/* MODALS */}
                 {isModalOpen && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
-            <h2 style={{marginTop: 0, color: '#1e293b'}}>Analyze: {selectedFileForAi?.name}</h2>
-            
-            {!isAnalyzing && !aiResult && (
-                <div>
-                    <p style={{color: '#64748b'}}>Select an AI model to evaluate this document. Results will be saved automatically.</p>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                            
-                            {/* Existing OpenAI Button (For standard IEEE docs) */}
-                            <button 
-                                onClick={() => triggerAnalysis('openai')} 
-                                style={styles.syncBtn}>
-                                Use OpenAI (GPT)
-                            </button>
-
-                            {/* NEW: OpenRouter Button (For SPMP/Nemotron logic) */}
-                            <button 
-                                onClick={() => triggerAnalysis('openrouter')} 
-                                style={{ ...styles.syncBtn, backgroundColor: '#8b5cf6' }}>
-                                Use OpenRouter (GEMINI)
-                            </button>
-
-                            </div>
-                        </div>
-                        )}
-
-                        {isAnalyzing && (
-                            <div style={{ padding: '20px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>
-                                <p>AI is reading the document and saving to Supabase... please wait.</p>
-                            </div>
-                        )}
-
-                            {aiResult && (
+                        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
+                            <h2 style={{marginTop: 0, color: '#1e293b'}}>Analyze: {selectedFileForAi?.name}</h2>
+                            {!isAnalyzing && !aiResult && (
                                 <div>
-                                    <h3 style={{color: '#1e293b'}}>AI Evaluation Result:</h3>
-                                    {/* The pre-wrap style will handle both standard text and JSON strings */}
-                                    <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6', overflowX: 'auto' }}>
-                                        {aiResult}
+                                    <p style={{color: '#64748b'}}>Select an AI model to evaluate this document.</p>
+                                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                                        <button onClick={() => triggerAnalysis('openai')} style={styles.syncBtn}>Use OpenAI (GPT)</button>
+                                        <button onClick={() => triggerAnalysis('openrouter')} style={{ ...styles.syncBtn, backgroundColor: '#8b5cf6' }}>Use Gemini (BYOK)</button>
                                     </div>
                                 </div>
                             )}
-
-                            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setIsModalOpen(false)} style={styles.newFolderBtn}>Close</button>
-                            </div>
+                            {isAnalyzing && <div style={{ padding: '20px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>AI is analyzing...</div>}
+                            {aiResult && (
+                                <div>
+                                    <h3 style={{color: '#1e293b'}}>AI Evaluation Result:</h3>
+                                    <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6' }}>{aiResult}</div>
+                                </div>
+                            )}
+                            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}><button onClick={() => setIsModalOpen(false)} style={styles.newFolderBtn}>Close</button></div>
                         </div>
                     </div>
                 )}
 
-                {/* 2. View Saved History Modal */}
                 {selectedHistoryItem && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
                         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '700px', maxHeight: '85vh', overflowY: 'auto' }}>
                             <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '20px' }}>
                                 <h2 style={{marginTop: 0, marginBottom: '5px', color: '#1e293b'}}>Saved Evaluation Report</h2>
                                 <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>File: {selectedHistoryItem.fileName}</p>
-                                <p style={{margin: 0, color: '#64748b', fontSize: '14px'}}>Date: {new Date(selectedHistoryItem.evaluatedAt).toLocaleString()}</p>
                             </div>
-                            
-                            <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6' }}>
-                                {selectedHistoryItem.evaluationResult}
-                            </div>
-
-                            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setSelectedHistoryItem(null)} style={styles.newFolderBtn}>Close Report</button>
-                            </div>
+                            <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6' }}>{selectedHistoryItem.evaluationResult}</div>
+                            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}><button onClick={() => setSelectedHistoryItem(null)} style={styles.newFolderBtn}>Close Report</button></div>
                         </div>
                     </div>
                 )}
