@@ -402,7 +402,7 @@ const TeacherDashboard = ({ user }) => {
                                     <p style={{color: '#64748b'}}>Select an AI model to evaluate this document.</p>
                                     <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                                         <button onClick={() => triggerAnalysis('openai')} style={styles.syncBtn}>Use OpenAI (GPT)</button>
-                                        <button onClick={() => triggerAnalysis('openrouter')} style={{ ...styles.syncBtn, backgroundColor: '#8b5cf6' }}>Use Gemini (BYOK)</button>
+                                        <button onClick={() => triggerAnalysis('openrouter')} style={{ ...styles.syncBtn, backgroundColor: '#19526d' }}>Use Google (GEMINI)</button>
                                     </div>
                                 </div>
                             )}
