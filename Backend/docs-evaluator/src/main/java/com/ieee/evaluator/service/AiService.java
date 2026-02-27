@@ -25,11 +25,13 @@ public class AiService {
 
     private final GoogleDriveService driveService;
     private final EvaluationHistoryRepository historyRepository;
+    private final OpenRouterService openRouterService;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public AiService(GoogleDriveService driveService, EvaluationHistoryRepository historyRepository) {
+    public AiService(GoogleDriveService driveService, EvaluationHistoryRepository historyRepository, OpenRouterService openRouterService) {
         this.driveService = driveService;
         this.historyRepository = historyRepository;
+        this.openRouterService = openRouterService;
     }
 
     public String analyzeDocument(String fileId, String fileName, String aiModel) throws Exception {
@@ -41,9 +43,15 @@ public class AiService {
             extractedText = tika.parseToString(stream);
         }
 
+        if (extractedText == null || extractedText.trim().isEmpty()) {
+            return "ERROR: No readable text found in this document. Please ensure it is a text-based PDF or DOCX, not a scanned image.";
+        }
+
         String result;
         if ("openai".equalsIgnoreCase(aiModel)) {
             result = callOpenAi(extractedText);
+        } else if ("openrouter".equalsIgnoreCase(aiModel) || "nemotron".equalsIgnoreCase(aiModel)) {
+            result = openRouterService.analyzeDocument(extractedText);
         } else {
             result = "Model not supported yet.";
         }
