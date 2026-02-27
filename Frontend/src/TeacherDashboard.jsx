@@ -369,28 +369,43 @@ const TeacherDashboard = ({ user }) => {
                 {/* 1. New Analysis Modal */}
                 {isModalOpen && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-                        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
-                            <h2 style={{marginTop: 0, color: '#1e293b'}}>Analyze: {selectedFileForAi?.name}</h2>
+        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <h2 style={{marginTop: 0, color: '#1e293b'}}>Analyze: {selectedFileForAi?.name}</h2>
+            
+            {!isAnalyzing && !aiResult && (
+                <div>
+                    <p style={{color: '#64748b'}}>Select an AI model to evaluate this document. Results will be saved automatically.</p>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                             
-                            {!isAnalyzing && !aiResult && (
-                                <div>
-                                    <p style={{color: '#64748b'}}>Select an AI model to evaluate this document. Results will be saved automatically.</p>
-                                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                                        <button onClick={() => triggerAnalysis('openai')} style={styles.syncBtn}>Use OpenAI (GPT)</button>
-                                    </div>
-                                </div>
-                            )}
+                            {/* Existing OpenAI Button (For standard IEEE docs) */}
+                            <button 
+                                onClick={() => triggerAnalysis('openai')} 
+                                style={styles.syncBtn}>
+                                Use OpenAI (GPT)
+                            </button>
 
-                            {isAnalyzing && (
-                                <div style={{ padding: '20px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>
-                                    <p>AI is reading the document and saving to Supabase... please wait.</p>
-                                </div>
-                            )}
+                            {/* NEW: OpenRouter Button (For SPMP/Nemotron logic) */}
+                            <button 
+                                onClick={() => triggerAnalysis('openrouter')} 
+                                style={{ ...styles.syncBtn, backgroundColor: '#8b5cf6' }}>
+                                Use OpenRouter (GEMINI)
+                            </button>
+
+                            </div>
+                        </div>
+                        )}
+
+                        {isAnalyzing && (
+                            <div style={{ padding: '20px', textAlign: 'center', color: '#2563eb', fontWeight: '500' }}>
+                                <p>AI is reading the document and saving to Supabase... please wait.</p>
+                            </div>
+                        )}
 
                             {aiResult && (
                                 <div>
                                     <h3 style={{color: '#1e293b'}}>AI Evaluation Result:</h3>
-                                    <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6' }}>
+                                    {/* The pre-wrap style will handle both standard text and JSON strings */}
+                                    <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: '1.6', overflowX: 'auto' }}>
                                         {aiResult}
                                     </div>
                                 </div>

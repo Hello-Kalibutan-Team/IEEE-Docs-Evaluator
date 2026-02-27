@@ -25,11 +25,13 @@ public class AiService {
 
     private final GoogleDriveService driveService;
     private final EvaluationHistoryRepository historyRepository;
+    private final OpenRouterService openRouterService;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public AiService(GoogleDriveService driveService, EvaluationHistoryRepository historyRepository) {
+    public AiService(GoogleDriveService driveService, EvaluationHistoryRepository historyRepository, OpenRouterService openRouterService) {
         this.driveService = driveService;
         this.historyRepository = historyRepository;
+        this.openRouterService = openRouterService;
     }
 
     public String analyzeDocument(String fileId, String fileName, String aiModel) throws Exception {
@@ -41,9 +43,15 @@ public class AiService {
             extractedText = tika.parseToString(stream);
         }
 
+        if (extractedText == null || extractedText.trim().isEmpty()) {
+            return "ERROR: No readable text found in this document. Please ensure it is a text-based PDF or DOCX, not a scanned image.";
+        }
+
         String result;
         if ("openai".equalsIgnoreCase(aiModel)) {
             result = callOpenAi(extractedText);
+        } else if ("openrouter".equalsIgnoreCase(aiModel) || "GPT".equalsIgnoreCase(aiModel)) {
+            result = openRouterService.analyzeDocument(extractedText);
         } else {
             result = "Model not supported yet.";
         }
@@ -68,7 +76,26 @@ public class AiService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(openAiKey);
 
-        String prompt = "You are an IT professor evaluating a software engineering document. Summarize its strengths and weaknesses briefly based on standard IEEE guidelines:\n\n" + text;
+    String prompt = """
+        You are an IT professor evaluating a Software Requirements Specification (SRS) document based on standard IEEE 830 guidelines.
+        
+        CRITICAL RULE: If the provided text is empty, unreadable, or is NOT a software engineering document (e.g., it is a certificate, a letter, or random text), you must state: "ERROR: This document does not appear to be a valid Software Engineering document. No IEEE analysis can be performed."
+        
+        If it is a valid document, provide a professional evaluation with the following structure:
+        ### Summary Evaluation
+        (A brief overview of the document's quality)
+
+        ### Strengths
+        (Bullet points of specific strengths found in the text)
+
+        ### Weaknesses
+        (Bullet points of missing IEEE 830 sections or poor quality areas)
+
+        ### Conclusion
+        (Final assessment)
+
+        DOCUMENT CONTENT:
+        """ + text;
 
         Map<String, Object> body = Map.of(
             "model", "gpt-4o-mini",
