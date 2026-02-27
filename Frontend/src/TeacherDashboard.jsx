@@ -388,7 +388,7 @@ const TeacherDashboard = ({ user }) => {
                             <button 
                                 onClick={() => triggerAnalysis('openrouter')} 
                                 style={{ ...styles.syncBtn, backgroundColor: '#8b5cf6' }}>
-                                Use OpenRouter (Nemotron)
+                                Use OpenRouter (GEMINI)
                             </button>
 
                             </div>

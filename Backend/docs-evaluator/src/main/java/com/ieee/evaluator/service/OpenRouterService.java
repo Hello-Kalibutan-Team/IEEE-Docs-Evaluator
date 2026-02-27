@@ -24,7 +24,7 @@ public class OpenRouterService {
     @Value("${openrouter.api.url:https://openrouter.ai/api/v1/chat/completions}")
     private String apiUrl;
 
-    @Value("${openrouter.model:amazon/nova-lite-v1:free}")
+    @Value("${openrouter.model:openrouter/free}")
     private String model;
 
     private final RestTemplate restTemplate;
@@ -57,22 +57,38 @@ public class OpenRouterService {
             ? documentContent.substring(0, 8000) + "...[truncated]" 
             : documentContent;
 
-        return "You are an IT professor evaluating a Software Requirements Specification (SRS) document based on standard IEEE 830 guidelines. " +
-               "Please read the provided document content carefully. " +
-               "Summarize its specific strengths and weaknesses briefly and clearly. If the document appears to be empty or unrelated to an SRS, state that clearly.\n\n" +
-               "DOCUMENT CONTENT:\n" + truncatedContent;
+        return """
+            You are an IT professor evaluating a Software Requirements Specification (SRS) document based on standard IEEE 830 guidelines.
+            
+            CRITICAL RULE: If the provided text is empty, unreadable, or is NOT a software engineering document (e.g., it is a certificate, a letter, or random text), you must state: "ERROR: This document does not appear to be a valid Software Engineering document. No IEEE analysis can be performed."
+            
+            If it is a valid document, provide a professional evaluation with the following structure:
+            ### Summary Evaluation
+            (A brief overview of the document's quality)
+
+            ### Strengths
+            (Bullet points of specific strengths found in the text)
+
+            ### Weaknesses
+            (Bullet points of missing IEEE 830 sections or poor quality areas)
+
+            ### Conclusion
+            (Final assessment)
+
+            DOCUMENT CONTENT:
+            %s
+            """.formatted(truncatedContent);
     }
 
     private String callOpenRouterAPI(String prompt) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + apiKey);
+        headers.setBearerAuth(apiKey);
         headers.set("HTTP-Referer", "http://localhost:8080");
         headers.set("X-Title", "IEEE Docs Evaluator");
 
         try {
             List<Map<String, Object>> contentList = new ArrayList<>();
-            
             Map<String, Object> textContent = new HashMap<>();
             textContent.put("type", "text");
             textContent.put("text", prompt);
@@ -84,7 +100,7 @@ public class OpenRouterService {
                 Map.of("role", "user", "content", contentList)
             ));
             requestBody.put("temperature", 0.3);
-            requestBody.put("max_tokens", 1000);
+            requestBody.put("max_tokens", 400); 
 
             String jsonBody = objectMapper.writeValueAsString(requestBody);
             HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
