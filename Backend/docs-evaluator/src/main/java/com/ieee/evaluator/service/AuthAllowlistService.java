@@ -1,95 +1,78 @@
 package com.ieee.evaluator.service;
 
-import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.model.ValueRange;
 import com.ieee.evaluator.model.StudentTrackerRecord;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class AuthAllowlistService {
 
-    private final Sheets sheetsService;
+    private final GoogleSheetsService sheetsService;
 
-    @Value("${google.sheets.spreadsheet-id}")
-    private String spreadsheetId;
-
-    @Value("${google.sheets.range}")
-    private String range;
-
-    @Value("${app.evaluator.teacher-emails}")
-    private String teacherEmails;
-
-    public AuthAllowlistService(Sheets sheetsService) {
+    public AuthAllowlistService(GoogleSheetsService sheetsService) {
         this.sheetsService = sheetsService;
     }
 
-    private List<StudentTrackerRecord> fetchAllStudents() throws IOException {
-        ValueRange response = sheetsService.spreadsheets().values()
-                .get(spreadsheetId, range)
-                .execute();
-
-        List<List<Object>> values = response.getValues();
-        List<StudentTrackerRecord> students = new ArrayList<>();
-
-        if (values != null && !values.isEmpty()) {
-            for (List<Object> row : values) {
-                if (row.size() >= 3) {
-                    students.add(new StudentTrackerRecord(
-                            row.get(0).toString(), 
-                            row.get(1).toString(), 
-                            row.get(2).toString(),
-                            null // Role is null initially
-                    ));
-                }
-            }
-        }
-        return students;
-    }
-
-    public StudentTrackerRecord verifyUser(String googleDisplayName, String googleEmail) throws IOException {
+    public StudentTrackerRecord verifyUser(String googleEmail) throws Exception {
         
-        // 1. VIP CHECK: Are they on the Teacher list?
-        if (googleEmail != null) {
-            String[] vips = teacherEmails.split(",");
-            for (String vip : vips) {
-                if (vip.trim().equalsIgnoreCase(googleEmail.trim())) {
+        if (googleEmail == null || googleEmail.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalizedEmail = googleEmail.trim();
+
+        // 1. VIP CHECK: Check the "Teachers" sheet
+        String teachersRange = "Teachers!A2:B";
+        List<List<Object>> teacherValues = sheetsService.getSheetData(teachersRange);
+        
+        if (teacherValues != null && !teacherValues.isEmpty()) {
+            for (List<Object> row : teacherValues) {
+                if (row == null || row.isEmpty()) continue;
+                
+                String sheetEmail = row.size() > 0 ? row.get(0).toString().trim() : "";
+                
+                if (sheetEmail.equalsIgnoreCase(normalizedEmail)) {
+                    // Strictly use the name from the Sheet (Column B)
+                    String teacherName = row.size() > 1 ? row.get(1).toString().trim() : "Unknown Teacher";
+                    
                     return new StudentTrackerRecord(
-                            googleDisplayName,
-                            "N/A", // Teachers don't have a section
-                            "N/A", // Teachers don't have a group code
+                            teacherName,
+                            "N/A", 
+                            "N/A", 
                             "TEACHER"
                     );
                 }
             }
         }
 
-        // 2. STANDARD CHECK: If not a teacher, check the Google Sheet for students
-        List<StudentTrackerRecord> authorizedStudents = fetchAllStudents();
-        String normalizedInputName = googleDisplayName.toUpperCase().trim();
-
-        for (StudentTrackerRecord student : authorizedStudents) {
-            String normalizedSheetName = student.getStudentName().toUpperCase().replace(",", "");
-            
-            String[] nameParts = normalizedInputName.split(" ");
-            boolean matches = true;
-            for (String part : nameParts) {
-                if (!normalizedSheetName.contains(part)) {
-                    matches = false;
-                    break;
+        // 2. STANDARD CHECK: Check the "Students" sheet
+        String studentsRange = "Students!A2:D";
+        List<List<Object>> studentValues = sheetsService.getSheetData(studentsRange);
+        
+        if (studentValues != null && !studentValues.isEmpty()) {
+            for (List<Object> row : studentValues) {
+                if (row == null || row.isEmpty()) continue;
+                
+                String sheetEmail = row.size() > 0 ? row.get(0).toString().trim() : "";
+                
+                if (sheetEmail.equalsIgnoreCase(normalizedEmail)) {
+                    // Strictly use the name from the Sheet (Column B)
+                    String studentName = row.size() > 1 ? row.get(1).toString().trim() : "Unknown Student";
+                    String section = row.size() > 2 ? row.get(2).toString().trim() : "";
+                    String teamCode = row.size() > 3 ? row.get(3).toString().trim() : "";
+                    
+                    return new StudentTrackerRecord(
+                            studentName,
+                            section,
+                            teamCode,
+                            "STUDENT"
+                    );
                 }
-            }
-
-            if (matches) {
-                student.setRole("STUDENT"); // Assign the Student role
-                return student; 
             }
         }
         
-        return null; // Access Denied
+        // 3. Access Denied: Email not found in either sheet
+        return null; 
     }
 }

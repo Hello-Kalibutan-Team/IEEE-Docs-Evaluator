@@ -20,11 +20,10 @@ function App() {
         
         try {
           // 1. Extract Google metadata from Supabase session
-          const googleName = currentSession.user.user_metadata.full_name;
           const googleEmail = currentSession.user.email; 
           
           // 2. Knock on Spring Boot's door to verify and get the Role Flag
-          const data = await verifyStudentWithBackend(googleName, googleEmail);
+          const data = await verifyStudentWithBackend(googleEmail);
           
           // 3. Store the full record (Name, Section, Group, and Role)
           setStudentData(data); 
