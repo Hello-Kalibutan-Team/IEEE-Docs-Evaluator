@@ -1,13 +1,14 @@
 const API_BASE_URL = 'http://localhost:8080/api';
 
 /**
- * AUTH: Verifies user against Google Sheets allowlist
+ * AUTH: Verifies user against Google Sheets allowlist (Email Only)
  */
-export const verifyStudentWithBackend = async (googleName, googleEmail) => {
+export const verifyStudentWithBackend = async (googleEmail) => {
     const response = await fetch(`${API_BASE_URL}/auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: googleName, email: googleEmail })
+        // Only sending the email now!
+        body: JSON.stringify({ email: googleEmail }) 
     });
 
     if (!response.ok) {

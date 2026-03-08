@@ -69,4 +69,22 @@ public class GoogleSheetsService {
         }
         return configMap;
     }
+
+    /**
+     * Fetches generic row data from a specified range in the Google Sheet.
+     */
+    public List<List<Object>> getSheetData(String range) throws IOException, GeneralSecurityException {
+        Sheets service = new Sheets.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                GsonFactory.getDefaultInstance(),
+                credential)
+                .setApplicationName("IEEE Docs Evaluator")
+                .build();
+
+        ValueRange response = service.spreadsheets().values()
+                .get(SPREADSHEET_ID, range)
+                .execute();
+
+        return response.getValues();
+    }
 }

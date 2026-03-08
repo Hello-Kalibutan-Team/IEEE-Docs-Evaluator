@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.Map;
 
 @RestController
@@ -23,10 +22,10 @@ public class AuthController {
     @PostMapping("/verify")
     public ResponseEntity<?> verifyGoogleLogin(@RequestBody Map<String, String> payload) {
         try {
-            String googleName = payload.get("displayName"); 
+            // Only extract and use the email
             String googleEmail = payload.get("email"); 
             
-            StudentTrackerRecord verifiedStudent = allowlistService.verifyUser(googleName, googleEmail);
+            StudentTrackerRecord verifiedStudent = allowlistService.verifyUser(googleEmail);
 
             if (verifiedStudent != null) {
                 return ResponseEntity.ok(verifiedStudent); 
@@ -34,10 +33,10 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body("Unauthorized: You are not on the Class Allowlist.");
             }
-        } catch (IOException e) {
+        } catch (Exception e) { 
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error connecting to verification server.");
+                    .body("Error connecting to verification server: " + e.getMessage());
         }
     }
 }
