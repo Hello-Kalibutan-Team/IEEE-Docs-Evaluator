@@ -47,7 +47,7 @@ public class SubmissionSyncService {
         int colSection = getColumnIndexSafely("COL_INDEX_SECTION");    
         int colTeam = getColumnIndexSafely("COL_INDEX_TEAM");          
 
-        // Fetch Specific Document Columns (Matches your SQL!)
+        // Fetch Specific Document Columns
         int colSrs = getColumnIndexSafely("COL_INDEX_SRS");
         int colSdd = getColumnIndexSafely("COL_INDEX_SDD");
         int colSpmp = getColumnIndexSafely("COL_INDEX_SPMP");
@@ -61,19 +61,20 @@ public class SubmissionSyncService {
         List<DriveFile> submissions = new ArrayList<>();
 
         if (values != null) {
-            // Start at i=1 if row 0 is headers, or keep at 0 if your range ignores headers
             for (List<Object> row : values) {
                 if (row.isEmpty()) continue;
-
+                
+                // Student Tags
                 String timestampStr = row.size() > colTimestamp && colTimestamp >= 0 ? row.get(colTimestamp).toString() : "Unknown Date";
                 String studentName = row.size() > colName && colName >= 0 ? row.get(colName).toString() : "Unknown Student";
                 String teamCode = row.size() > colTeam && colTeam >= 0 ? row.get(colTeam).toString() : "No Team";
+                String section = row.size() > colSection && colSection >= 0 ? row.get(colSection).toString() : "No Section";
 
-                // THE SPLITTER: Checks each column. Skips smoothly if the cell is blank.
-                extractAndAddFile(row, colSrs, "SRS", studentName, teamCode, timestampStr, configMap, submissions);
-                extractAndAddFile(row, colSdd, "SDD", studentName, teamCode, timestampStr, configMap, submissions);
-                extractAndAddFile(row, colSpmp, "SPMP", studentName, teamCode, timestampStr, configMap, submissions);
-                extractAndAddFile(row, colStd, "STD", studentName, teamCode, timestampStr, configMap, submissions);
+                // File Tags
+                extractAndAddFile(row, colSrs, "SRS", studentName, teamCode, section, timestampStr, configMap, submissions);
+                extractAndAddFile(row, colSdd, "SDD", studentName, teamCode, section, timestampStr, configMap, submissions);
+                extractAndAddFile(row, colSpmp, "SPMP", studentName, teamCode, section, timestampStr, configMap, submissions);
+                extractAndAddFile(row, colStd, "STD", studentName, teamCode, section, timestampStr, configMap, submissions);
             }
         }
         return submissions;
@@ -88,11 +89,12 @@ public class SubmissionSyncService {
         }
     }
 
-    private void extractAndAddFile(List<Object> row, int colIndex, String docType, String studentName, String teamCode, String timestampStr, Map<String, DeliverableConfig> configMap, List<DriveFile> submissions) {
+    // FIXED: Added "String section" to the parameters
+    private void extractAndAddFile(List<Object> row, int colIndex, String docType, String studentName, String teamCode, String section, String timestampStr, Map<String, DeliverableConfig> configMap, List<DriveFile> submissions) {
         if (colIndex < 0 || colIndex >= row.size()) return;
 
         String url = row.get(colIndex).toString().trim();
-        if (url.isEmpty()) return; // Ignored if left blank by student!
+        if (url.isEmpty()) return; 
 
         String fileId = extractIdFromUrl(url);
         
@@ -114,7 +116,10 @@ public class SubmissionSyncService {
             file.setWebViewLink(url);
             
             String statusPrefix = isLate ? "[LATE] " : "";
-            file.setName(statusPrefix + "[" + docType + "] " + teamCode + " | " + studentName);
+            
+            // FIXED: Attach the section to the document name on the dashboard! 
+            // e.g., "[SRS] CS-101 - Team A | John Doe"
+            file.setName(statusPrefix + "[" + docType + "] " + section + " - " + teamCode + " | " + studentName);
             file.setSubmittedAt(timestampStr);
             file.setMimeType("application/vnd.google-apps.document");
 
