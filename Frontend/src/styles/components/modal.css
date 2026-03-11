@@ -1,0 +1,117 @@
+.app-modal__overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 17, 31, 0.62);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.app-modal__container {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  background: var(--bg-surface);
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.app-modal__title {
+  margin: 0;
+  color: var(--text-main);
+}
+
+.app-modal__subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+}
+
+.app-modal__close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+
+.app-modal__body {
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+}
+
+.app-modal__footer {
+  border-top: 1px solid var(--line-soft);
+  padding: 0.9rem 1.2rem;
+}
+
+.report-content {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-surface-2);
+  color: var(--text-main);
+}
+
+.report-textarea {
+  width: 100%;
+  min-height: 280px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--bg-surface-2);
+  color: var(--text-main);
+  padding: 0.8rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+[data-theme='dark'] .app-modal__overlay {
+  background: rgba(19, 24, 32, 0.7);
+}
+
+[data-theme='dark'] .app-modal__container {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.modal-actions--end {
+  justify-content: flex-end;
+}
+
+.btn.btn--openai {
+  background: linear-gradient(140deg, #0f766e, #0e9f6e);
+  border: none;
+  color: #ffffff;
+}
+
+.btn.btn--openai:hover {
+  filter: brightness(1.04);
+}
+
+.btn.btn--gemini {
+  background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+  border: none;
+  color: #ffffff;
+}
+
+.btn.btn--gemini:hover {
+  filter: brightness(1.04);
+}

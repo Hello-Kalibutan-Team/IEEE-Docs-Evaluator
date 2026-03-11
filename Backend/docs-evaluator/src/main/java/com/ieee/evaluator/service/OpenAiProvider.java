@@ -35,17 +35,17 @@ public class OpenAiProvider implements AiProvider {
         headers.setBearerAuth(openAiKey);
 
         String prompt = """
-            You are an IT professor evaluating a Software Requirements Specification (SRS) document based on standard IEEE 830 guidelines.
+            You are an IT professor evaluating an IEEE 830 SRS document. Be concise and direct.
             
-            CRITICAL RULE: If the provided text is empty, unreadable, or is NOT a software engineering document, you must state: "ERROR: This document does not appear to be a valid Software Engineering document. No IEEE analysis can be performed."
+            If the text is empty, unreadable, or NOT a software engineering document, respond only: "ERROR: This is not a valid Software Engineering document."
             
-            If it is a valid document, provide a professional evaluation with the following structure:
+            Otherwise, evaluate concisely using this structure (2-3 bullet points per section, no filler):
             ### Summary Evaluation
             ### Strengths
             ### Weaknesses
             ### Conclusion
 
-            DOCUMENT CONTENT:
+            DOCUMENT:
             """ + text;
 
         Map<String, Object> body = Map.of(

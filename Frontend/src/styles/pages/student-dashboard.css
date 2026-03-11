@@ -1,0 +1,42 @@
+.layout--student .student-sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, var(--bg-sidebar-start), var(--bg-sidebar-end));
+  color: var(--sidebar-text);
+  padding: 1.4rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.student-sidebar__brand {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.student-sidebar__caption {
+  margin: 0;
+  color: var(--sidebar-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.student-card--profile {
+  margin: 0.5rem 0 1rem;
+  background: color-mix(in srgb, var(--bg-surface) 82%, var(--brand) 18%);
+  border-color: var(--sidebar-border);
+}
+
+.student-card--profile h4 {
+  margin: 0.2rem 0;
+}
+
+.student-card--profile p {
+  margin: 0.16rem 0;
+  color: var(--sidebar-text);
+}
+
+.student-card__label {
+  color: var(--sidebar-muted);
+  font-size: 0.8rem;
+}
