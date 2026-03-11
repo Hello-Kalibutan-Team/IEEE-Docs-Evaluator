@@ -1,0 +1,75 @@
+.layout--student .student-sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, var(--bg-sidebar-start), var(--bg-sidebar-end));
+  color: var(--sidebar-text);
+  padding: 1.4rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.student-sidebar__brand {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.student-sidebar__caption {
+  margin: 0;
+  color: var(--sidebar-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.student-card--profile {
+  margin: 0.5rem 0 1rem;
+  background: color-mix(in srgb, var(--bg-surface) 94%, var(--text-main) 6%);
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, var(--text-main) 18%);
+  border-radius: 14px;
+  padding: 0.85rem 0.9rem;
+}
+
+.student-card__name {
+  margin: 0.2rem 0 0.55rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--text-main);
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.student-card__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  padding-top: 0.34rem;
+  margin-top: 0.34rem;
+  border-top: 1px dashed color-mix(in srgb, var(--line-soft) 80%, transparent);
+}
+
+.student-card__meta-key {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+  min-width: 56px;
+}
+
+.student-card__meta-value {
+  font-size: 0.82rem;
+  color: var(--text-main);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+.student-card__label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
