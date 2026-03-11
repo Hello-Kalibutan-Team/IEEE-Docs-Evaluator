@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 /**
  * AUTH: Verifies user against Google Sheets allowlist (Email Only)
@@ -21,7 +21,6 @@ export const verifyStudentWithBackend = async (googleEmail) => {
  * SUBMISSIONS: Triggers the backend to read the Google Sheet and fetch live Google Doc URLs
  */
 export const syncSubmissionsWithBackend = async () => {
-    // UPDATED: Points to your new, clean SubmissionController
     const response = await fetch(`${API_BASE_URL}/submissions/sync`);
     if (!response.ok) throw new Error('Submission sync failed.');
     return await response.json();
