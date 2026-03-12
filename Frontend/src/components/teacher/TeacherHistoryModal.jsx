@@ -1,4 +1,5 @@
 import AppModal from '../common/AppModal';
+import EvaluationReport from '../common/EvaluationReport';
 
 function TeacherHistoryModal({
   item,
@@ -41,7 +42,7 @@ function TeacherHistoryModal({
           onChange={(e) => onEditText(e.target.value)}
         />
       ) : (
-        <div className="report-content">{item?.evaluationResult}</div>
+        <EvaluationReport text={item?.evaluationResult}/>
       )}
     </AppModal>
   );

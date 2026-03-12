@@ -1,4 +1,5 @@
 import AppModal from '../common/AppModal';
+import EvaluationReport from '../common/EvaluationReport';
 
 function StudentReportModal({ report, onClose }) {
   return (
@@ -8,7 +9,7 @@ function StudentReportModal({ report, onClose }) {
       title="Professor's Evaluation"
       subtitle={report ? `File: ${report.fileName}` : ''}
     >
-      <div className="report-content">{report?.evaluationResult}</div>
+      <EvaluationReport text={report?.evaluationResult}/>
     </AppModal>
   );
 }

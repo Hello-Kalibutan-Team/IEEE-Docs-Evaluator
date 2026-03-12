@@ -1,4 +1,5 @@
 import AppModal from '../common/AppModal';
+import EvaluationReport from '../common/EvaluationReport';
 
 function TeacherAnalyzeModal({ isOpen, file, aiResult, isAnalyzing, onClose, onRun }) {
   return (
@@ -20,7 +21,7 @@ function TeacherAnalyzeModal({ isOpen, file, aiResult, isAnalyzing, onClose, onR
       )}
 
       {isAnalyzing && <p className="muted">Extracting text and running analysis...</p>}
-      {aiResult && <div className="report-content">{aiResult}</div>}
+      {aiResult && <EvaluationReport text={aiResult}/>}
     </AppModal>
   );
 }
