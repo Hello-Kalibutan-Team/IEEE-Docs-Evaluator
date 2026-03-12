@@ -86,7 +86,7 @@ export function useTeacherDashboard(showToast) {
   }
 
   useEffect(() => {
-    if (currentView === 'dashboard') loadSubmissions();
+    if (currentView === 'submissions') loadSubmissions();
     if (currentView === 'reports') loadHistory();
     if (currentView === 'settings') loadSettings();
   }, [currentView]);

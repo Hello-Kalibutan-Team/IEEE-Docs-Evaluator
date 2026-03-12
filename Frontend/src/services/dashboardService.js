@@ -15,7 +15,7 @@ export async function fetchStudentReports(groupCode) {
 
 export async function fetchTeacherSubmissions() {
   const data = await syncSubmissionsWithBackend();
-  return Array.from(new Map(data.map((item) => [item.name, item])).values());
+  return Array.from(new Map(data.map((item) => [item.id, item])).values());
 }
 
 export async function fetchTeacherHistory() {
