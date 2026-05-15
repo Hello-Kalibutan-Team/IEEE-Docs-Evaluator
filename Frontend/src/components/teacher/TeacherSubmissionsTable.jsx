@@ -8,9 +8,9 @@ function TeacherSubmissionsTable({ files, loading, isSyncing, analyzedFileIds, o
         <thead>
           <tr>
             <th>Submission Identity</th>
-            <th className="teacher-submissions__type-col" onClick={() => onSort('mimeType')}>Submission Type</th>
+            <th onClick={() => onSort('mimeType')}>Submission Type</th>
             <th onClick={() => onSort('date')}>Date Submitted</th>
-            <th className="teacher-submissions__actions-col">Actions</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -30,9 +30,9 @@ function TeacherSubmissionsTable({ files, loading, isSyncing, analyzedFileIds, o
                     {file.name}
                   </a>
                 </td>
-                <td className="teacher-submissions__type-col">{getDisplayType(file.mimeType)}</td>
+                <td>{getDisplayType(file.mimeType)}</td>
                 <td>{formatDateTime(file.submittedAt)}</td>
-                <td className="teacher-submissions__actions-col">
+                <td>
                   <div className="teacher-submissions__actions">
                     <button className="btn btn--soft teacher-submissions__action-btn" onClick={() => onAnalyze(file)}>
                       {analyzedFileIds?.has(file.id) ? 'Re-Evaluate' : 'Run AI Analysis'}

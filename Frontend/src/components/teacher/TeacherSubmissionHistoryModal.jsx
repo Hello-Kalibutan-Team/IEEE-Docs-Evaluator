@@ -12,26 +12,8 @@ function TeacherSubmissionHistoryModal({ isOpen, file, logs, onViewReport, onDel
 
 	function detectExplicitStatus(text) {
 		if (!text) return null;
-		const normalized = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-		// Matches the formats actually emitted by the evaluator, such as:
-		// **Status**: IMPROVED
-		// **Status**: [IMPROVED]
-		// Status: WORSENED
-		const match = normalized.match(/(?:\*\*|\*)?\s*Status\s*(?:\*\*|\*)?\s*:\s*\[?(IMPROVED|WORSENED|SAME|PARTIALLY IMPROVED)\]?/i);
-		if (match) return match[1].toUpperCase();
-
-		// Fallback: sometimes the status appears inside the revision analysis block.
-		const revisionSection = normalized.split(/Revision\s+Analysis/i)[1];
-		if (revisionSection) {
-			const upper = revisionSection.toUpperCase();
-			if (upper.includes('PARTIALLY IMPROVED')) return 'PARTIALLY IMPROVED';
-			if (upper.includes('IMPROVED')) return 'IMPROVED';
-			if (upper.includes('WORSENED')) return 'WORSENED';
-			if (upper.includes('SAME')) return 'SAME';
-		}
-
-		return null;
+		const match = String(text).match(/\*{0,2}\s*Status\s*\*{0,2}\s*:\s*\[?(IMPROVED|WORSENED|SAME)\]?/i);
+		return match ? match[1].toUpperCase() : null;
 	}
 
 	function computeStatus(log, index) {
@@ -55,7 +37,6 @@ function TeacherSubmissionHistoryModal({ isOpen, file, logs, onViewReport, onDel
 	function statusClass(status) {
 		switch (status) {
 			case 'IMPROVED': return 'eval-status-badge eval-status-badge--improved';
-			case 'PARTIALLY IMPROVED': return 'eval-status-badge eval-status-badge--improved';
 			case 'WORSENED': return 'eval-status-badge eval-status-badge--worsened';
 			case 'INITIAL':  return 'eval-status-badge eval-status-badge--same';
 			default:         return 'eval-status-badge eval-status-badge--same';
