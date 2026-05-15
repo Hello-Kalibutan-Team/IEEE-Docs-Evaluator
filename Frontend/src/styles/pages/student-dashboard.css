@@ -393,9 +393,9 @@ color: var(--brand);
 }
 
 [data-theme='dark'] .student-doc-badge {
-  background: var(--bg-surface-2);
-  color: var(--text-main);
-  border-color: var(--line-soft);
+  background: var(--brand-soft);
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--line-soft));
+  color: var(--brand);
 }
 
 .student-status {
